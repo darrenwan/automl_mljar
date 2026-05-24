@@ -1,18 +1,18 @@
 import json
 
-import pandas as pd
+import matplotlib
 import numpy as np
-from sklearn.experimental import enable_iterative_imputer
+import pandas as pd
 from sklearn.impute import IterativeImputer
 
 from src.config import config
-import matplotlib
 
 # 设置中文字体
-matplotlib.rcParams['font.sans-serif'] = ['SimHei']
+matplotlib.rcParams["font.sans-serif"] = ["SimHei"]
 
 # 解决负号显示问题
-matplotlib.rcParams['axes.unicode_minus'] = False
+matplotlib.rcParams["axes.unicode_minus"] = False
+
 
 def process_mnar(df, site_col, mnar_vars):
     """
@@ -34,7 +34,9 @@ def process_mnar(df, site_col, mnar_vars):
                 continue
             # 创建缺失指示器（基于原始缺失）
             indicator_name = f"{var}_missing"
-            df[indicator_name] = df[var].isna().astype(int)  #             cnt = df[indicator_name].value_counts()
+            df[indicator_name] = (
+                df[var].isna().astype(int)
+            )  #             cnt = df[indicator_name].value_counts()
             # 只对该中心的缺失样本进行填充
             missing_mask = mask_center & df[var].isna()
             if missing_mask.any():
@@ -45,10 +47,14 @@ def process_mnar(df, site_col, mnar_vars):
                     # 添加"missing"类别到现有的类别中
                     existing_categories = df[var].dropna().unique()
                     if "missing" not in existing_categories:
-                        categories_with_missing = list(existing_categories) + ["missing"]
+                        categories_with_missing = list(existing_categories) + [
+                            "missing"
+                        ]
                     else:
                         categories_with_missing = existing_categories
-                    df[var] = pd.Categorical(df[var], categories=categories_with_missing)
+                    df[var] = pd.Categorical(
+                        df[var], categories=categories_with_missing
+                    )
                     df.loc[missing_mask, var] = "missing"
 
                 else:
@@ -58,7 +64,7 @@ def process_mnar(df, site_col, mnar_vars):
     return df
 
 
-def process_mar(df, site_col, mar_vars, all_centers_key='all_centers'):
+def process_mar(df, site_col, mar_vars, all_centers_key="all_centers"):
     """
     处理MAR缺失：使用多重插补（IterativeImputer）
     - 对不同中心分别进行插补（考虑到各中心变量集合可能不同）
@@ -89,7 +95,11 @@ def process_mar(df, site_col, mar_vars, all_centers_key='all_centers'):
 
         # 提取该中心子集，仅包含需要插补的变量以及其他可能用于预测的变量
         # 其他变量：除插补变量外的所有数值型变量（MNAR已填充，可作为预测因子）
-        other_numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c]) and c not in exist_vars]
+        other_numeric_cols = [
+            c
+            for c in df.columns
+            if pd.api.types.is_numeric_dtype(df[c]) and c not in exist_vars
+        ]
         # 构建插补所用的列：插补变量 + 其他数值型变量
         impute_cols = exist_vars + other_numeric_cols
         sub_df = df.loc[mask_center, impute_cols].copy()
@@ -111,7 +121,9 @@ def process_mar(df, site_col, mar_vars, all_centers_key='all_centers'):
         # 如果存在类别型预测变量，需先进行编码，本示例简化处理
         try:
             imputed_array = imputer.fit_transform(sub_df)
-            imputed_df = pd.DataFrame(imputed_array, columns=sub_df.columns, index=sub_df.index)
+            imputed_df = pd.DataFrame(
+                imputed_array, columns=sub_df.columns, index=sub_df.index
+            )
             # 将插补后的值写回原df（仅替换MAR变量）
             for var in valid_vars:
                 df.loc[mask_center, var] = imputed_df[var]
@@ -122,12 +134,12 @@ def process_mar(df, site_col, mar_vars, all_centers_key='all_centers'):
 
 
 def impute_main(df, mnar_jsonf, mar_jsonf, output_dir, output_file):
-    mnar_vars = json.load(open(mnar_jsonf, 'r'))
-    mar_vars = json.load(open(mar_jsonf, 'r'))
+    mnar_vars = json.load(open(mnar_jsonf))
+    mar_vars = json.load(open(mar_jsonf))
     # 缺失填补
     # 处理MNAR缺失
     df_processed = process_mnar(df, config.center, mnar_vars)
-    cnt = df_processed['血_B型柯萨奇病毒抗体.IgM_missing'].value_counts()
+    cnt = df_processed["血_B型柯萨奇病毒抗体.IgM_missing"].value_counts()
 
     # 处理MAR缺失
     df_final = process_mar(df_processed, config.center, mar_vars)
@@ -142,36 +154,44 @@ if __name__ == "__main__":
     # 模拟数据（包含各中心及变量）
     np.random.seed(42)
     n_samples = 100
-    sites = ['控江医院'] * 30 + ['控江社区'] * 30 + ['延吉社区'] * 40
-    df = pd.DataFrame({
-        'site': sites,
-        '血B型柯萨奇病毒抗体.IgM': np.random.choice([1, 2, np.nan], size=100, p=[0.4, 0.4, 0.2]),
-        '血肺炎支原体抗体.IgM': np.random.choice(['阴性', '阳性', np.nan], size=100, p=[0.45, 0.45, 0.1]),
-        '血白细胞计数': np.random.normal(6, 1.5, 100),
-        '血C反应蛋白': np.random.gamma(2, 2, 100),
-        '血淀粉样蛋白A': np.random.gamma(3, 1.5, 100),
-        '血血小板分布宽度': np.random.normal(12, 2, 100),
-    })
+    sites = ["控江医院"] * 30 + ["控江社区"] * 30 + ["延吉社区"] * 40
+    df = pd.DataFrame(
+        {
+            "site": sites,
+            "血B型柯萨奇病毒抗体.IgM": np.random.choice(
+                [1, 2, np.nan], size=100, p=[0.4, 0.4, 0.2]
+            ),
+            "血肺炎支原体抗体.IgM": np.random.choice(
+                ["阴性", "阳性", np.nan], size=100, p=[0.45, 0.45, 0.1]
+            ),
+            "血白细胞计数": np.random.normal(6, 1.5, 100),
+            "血C反应蛋白": np.random.gamma(2, 2, 100),
+            "血淀粉样蛋白A": np.random.gamma(3, 1.5, 100),
+            "血血小板分布宽度": np.random.normal(12, 2, 100),
+        }
+    )
     # 人为引入缺失（模拟MAR）
-    df.loc[df['site'] == '延吉社区', '血白细胞计数'] = np.nan
-    df.loc[df['site'] == '控江医院', ['血C反应蛋白', '血淀粉样蛋白A']] = np.nan
-    df.loc[:, '血血小板分布宽度'] = np.where(np.random.rand(100) < 0.2, np.nan, df['血血小板分布宽度'])
+    df.loc[df["site"] == "延吉社区", "血白细胞计数"] = np.nan
+    df.loc[df["site"] == "控江医院", ["血C反应蛋白", "血淀粉样蛋白A"]] = np.nan
+    df.loc[:, "血血小板分布宽度"] = np.where(
+        np.random.rand(100) < 0.2, np.nan, df["血血小板分布宽度"]
+    )
 
     # 定义MNAR和MAR字典
     mnar_vars = {
-        '控江医院': ['血B型柯萨奇病毒抗体.IgM', '血肺炎支原体抗体.IgM'],
-        '控江社区': ['血B型柯萨奇病毒抗体.IgM', '血肺炎支原体抗体.IgM']
+        "控江医院": ["血B型柯萨奇病毒抗体.IgM", "血肺炎支原体抗体.IgM"],
+        "控江社区": ["血B型柯萨奇病毒抗体.IgM", "血肺炎支原体抗体.IgM"],
     }
     mar_vars = {
-        '延吉社区': ['血白细胞计数'],
-        '控江医院': ['血C反应蛋白', '血淀粉样蛋白A'],
-        'all_centers': ['血血小板分布宽度']
+        "延吉社区": ["血白细胞计数"],
+        "控江医院": ["血C反应蛋白", "血淀粉样蛋白A"],
+        "all_centers": ["血血小板分布宽度"],
     }
 
     # 处理MNAR缺失
-    df_processed = process_mnar(df, 'site', mnar_vars)
+    df_processed = process_mnar(df, "site", mnar_vars)
     # 处理MAR缺失
-    df_final = process_mar(df_processed, 'site', mar_vars)
+    df_final = process_mar(df_processed, "site", mar_vars)
 
     print("处理完成。")
     print(df_final.head())

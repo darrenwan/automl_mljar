@@ -1,12 +1,10 @@
-import json
 import os
 
 import joblib
-import pandas as pd
 import numpy as np
-from sklearn.experimental import enable_iterative_imputer
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import IterativeImputer
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
 
 
@@ -18,7 +16,15 @@ def median_mode_impute(df, small_cat_cols, small_num_cols):
     return df
 
 
-def mice_impute(data, cat_str_cols, miss_big_cat, num_cols, id_cols, model_miss_encoder_dir, model_mice_dir):
+def mice_impute(
+    data,
+    cat_str_cols,
+    miss_big_cat,
+    num_cols,
+    id_cols,
+    model_miss_encoder_dir,
+    model_mice_dir,
+):
     """
     为什么用 LabelEncoder 而不是 OneHotEncoder？
     OneHotEncoder 会将多分类变量拆分为多个二元变量，增加特征数量，且插补时需同时处理多个哑变量，更复杂。
@@ -32,7 +38,7 @@ def mice_impute(data, cat_str_cols, miss_big_cat, num_cols, id_cols, model_miss_
     for col in cat_str_cols:
         # 仅对非缺失值编码，缺失值保持NaN
         non_missing = data_encoded[col].dropna()
-        col_encoder_file = model_miss_encoder_dir + f'/cat_str_encoder_{col}.joblib'
+        col_encoder_file = model_miss_encoder_dir + f"/cat_str_encoder_{col}.joblib"
         if not os.path.exists(col_encoder_file):
             le = LabelEncoder()
             data_encoded.loc[non_missing.index, col] = le.fit_transform(non_missing)
@@ -44,13 +50,13 @@ def mice_impute(data, cat_str_cols, miss_big_cat, num_cols, id_cols, model_miss_
 
         label_encoders[col] = le
 
-    mice_file = model_mice_dir + '/mice.joblib'
+    mice_file = model_mice_dir + "/mice.joblib"
     if not os.path.exists(mice_file):
         rf_estimator = RandomForestRegressor(
             n_estimators=50,  # 树的数量，50-100即可，太大跑得慢
             max_depth=10,  # 限制深度防过拟合
             random_state=42,
-            n_jobs=-1  # 调用所有CPU核心加速
+            n_jobs=-1,  # 调用所有CPU核心加速
         )
         imputer = IterativeImputer(
             estimator=rf_estimator,
@@ -58,7 +64,7 @@ def mice_impute(data, cat_str_cols, miss_big_cat, num_cols, id_cols, model_miss_
             tol=1e-3,
             min_value=0,  # 【极其重要】检验指标（如白细胞、CRP）不可能为负数！
             random_state=42,
-            verbose=0  # 打印插补进度
+            verbose=0,  # 打印插补进度
         )
 
         # 对所有变量进行插补（注意：插补结果是numpy数组）

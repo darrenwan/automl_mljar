@@ -42,7 +42,7 @@ def main():
 def long2wide(data_raw_file=None):
     """
     兼容旧版本的函数接口
-    
+
     Args:
         data_raw_file: 数据文件路径，如果为None则使用默认配置
     """

@@ -1,6 +1,4 @@
 # missing_analysis.py
-import json
-from collections import defaultdict
 
 import pandas as pd
 from evidently import DataDefinition, Dataset, Report
@@ -13,11 +11,13 @@ def compute_missing_summary(df, features, output_dir):
     # 每行的缺失率
     missing_per_row = df.isnull().sum(axis=1)
     missing_per_row_pct = (df.isnull().sum(axis=1) / (df.shape[1] - 3)) * 100
-    row_missing_summary = pd.DataFrame({
-        'Row Index': df[config.pid],
-        'Missing Features Count': missing_per_row,
-        'Missing Features Percentage': missing_per_row_pct
-    }).sort_values('Missing Features Percentage', ascending=False)
+    row_missing_summary = pd.DataFrame(
+        {
+            "Row Index": df[config.pid],
+            "Missing Features Count": missing_per_row,
+            "Missing Features Percentage": missing_per_row_pct,
+        }
+    ).sort_values("Missing Features Percentage", ascending=False)
 
     results = {}
 
@@ -27,35 +27,39 @@ def compute_missing_summary(df, features, output_dir):
     results["overall"] = overall
 
     # By center
-    by_center = (
-        df.groupby(config.center)[features]
-        .apply(lambda x: x.isna().mean())
-    )
+    by_center = df.groupby(config.center)[features].apply(lambda x: x.isna().mean())
 
     results["by_center"] = by_center
 
     # Center × label
-    cross = (
-        df.groupby(
-            [config.center, config.label]
-        )[features]
-        .apply(lambda x: x.isna().mean())
+    cross = df.groupby([config.center, config.label])[features].apply(
+        lambda x: x.isna().mean()
     )
 
     miss_big = [col for col in cross.columns if cross[col].max() > 0.05]
-    miss_small = [col for col in cross.columns if cross[col].max() <= 0.05 and cross[col].max() > 0.0]
+    miss_small = [
+        col
+        for col in cross.columns
+        if cross[col].max() <= 0.05 and cross[col].max() > 0.0
+    ]
 
     results["by_center_label"] = cross
-    results["miss_big_small"] = pd.DataFrame({"miss_big": [miss_big], "miss_small": [miss_small]})
+    results["miss_big_small"] = pd.DataFrame(
+        {"miss_big": [miss_big], "miss_small": [miss_small]}
+    )
 
     label_counts = df.groupby(config.center)[config.label].value_counts()
 
     with pd.ExcelWriter(f"{output_dir}/missing_summary.xlsx") as writer:
-        row_missing_summary.to_excel(writer, sheet_name="row_missing_summary", index=False)
+        row_missing_summary.to_excel(
+            writer, sheet_name="row_missing_summary", index=False
+        )
         results["overall"].to_excel(writer, sheet_name="overall")
         results["by_center"].to_excel(writer, sheet_name="by_center")
         results["by_center_label"].to_excel(writer, sheet_name="by_center_label")
-        results["miss_big_small"].to_excel(writer, sheet_name="miss_big_small_by_center_label")
+        results["miss_big_small"].to_excel(
+            writer, sheet_name="miss_big_small_by_center_label"
+        )
         label_counts.to_excel(writer, sheet_name="label_counts")
 
     return miss_small, miss_big
@@ -79,7 +83,7 @@ def norm_analysis(df, num_cols, output_dir):
         想了解偏离原因（偏态/峰态） → D'Agostino-Pearson
 
         避免使用 → KS检验（除非不估计参数且分布已知）
-        最佳实践：以Shapiro-Wilk为主，Anderson-Darling为辅，报告两个结果。    """
+        最佳实践：以Shapiro-Wilk为主，Anderson-Darling为辅，报告两个结果。"""
     from scipy import stats
 
     results = []
@@ -95,47 +99,51 @@ def norm_analysis(df, num_cols, output_dir):
         # 2. D'Agostino-Pearson检验
         dp_stat, dp_p = stats.normaltest(df2)
         # 3. Anderson-Darling检验（更稳健）
-        anderson_stat, anderson_p = stats.anderson(df2, dist='norm', method='interpolate')
+        anderson_stat, anderson_p = stats.anderson(
+            df2, dist="norm", method="interpolate"
+        )
 
         # 4. KS检验（用样本均值和标准差作为理论参数）
-        ks_stat, ks_p = stats.kstest(df2, 'norm', args=(df2.mean(), df2.std()))
+        ks_stat, ks_p = stats.kstest(df2, "norm", args=(df2.mean(), df2.std()))
 
         # 判断是否符合正态分布（以P>0.05为标准）
-        shapiro_normal = '是' if shapiro_p > 0.05 else '否'
-        dp_normal = '是' if dp_p > 0.05 else '否'
-        ks_normal = '是' if ks_p > 0.05 else '否'
-        anderson_normal = '是' if anderson_p > 0.05 else '否'
+        shapiro_normal = "是" if shapiro_p > 0.05 else "否"
+        dp_normal = "是" if dp_p > 0.05 else "否"
+        ks_normal = "是" if ks_p > 0.05 else "否"
+        anderson_normal = "是" if anderson_p > 0.05 else "否"
 
         norm_cnt = 0
-        if shapiro_normal == '是':
+        if shapiro_normal == "是":
             norm_cnt += 1
         # if dp_normal == '是':
         #     norm_cnt += 1
         # if ks_normal == '是':
         #     norm_cnt += 1
-        if anderson_normal == '是':
+        if anderson_normal == "是":
             norm_cnt += 1
 
         if norm_cnt >= 1:
             norm_features.append(col)
 
-        results.append({
-            'sample_size': df2.shape[0],
-            '变量': col,
-            'Shapiro统计量': round(shapiro_stat, 4),
-            'Shapiro_P值': round(shapiro_p, 4),
-            'Shapiro_符合正态': shapiro_normal,
-            'DP统计量': round(dp_stat, 4),
-            'DP_P值': round(dp_p, 4),
-            'DP_符合正态': dp_normal,
-            'KS统计量': round(ks_stat, 4),
-            'KS_P值': round(ks_p, 4),
-            'KS_符合正态': ks_normal,
-            'Anderson统计量': anderson_stat,
-            'Anderson_P值': round(anderson_p, 4),
-            'Anderson_符合正态': anderson_normal,
-            '满足正态检验的个数-shapiro-anderson': norm_cnt
-        })
+        results.append(
+            {
+                "sample_size": df2.shape[0],
+                "变量": col,
+                "Shapiro统计量": round(shapiro_stat, 4),
+                "Shapiro_P值": round(shapiro_p, 4),
+                "Shapiro_符合正态": shapiro_normal,
+                "DP统计量": round(dp_stat, 4),
+                "DP_P值": round(dp_p, 4),
+                "DP_符合正态": dp_normal,
+                "KS统计量": round(ks_stat, 4),
+                "KS_P值": round(ks_p, 4),
+                "KS_符合正态": ks_normal,
+                "Anderson统计量": anderson_stat,
+                "Anderson_P值": round(anderson_p, 4),
+                "Anderson_符合正态": anderson_normal,
+                "满足正态检验的个数-shapiro-anderson": norm_cnt,
+            }
+        )
 
     res = pd.DataFrame(results)
     res.to_excel(f"{output_dir}/normal_test.xlsx", index=False)
@@ -144,12 +152,20 @@ def norm_analysis(df, num_cols, output_dir):
 
 def tableone_analysis(df, cat_cols, num_cols, norm_features, output_dir):
     from tableone import TableOne
+
     nonnormal = list(set(num_cols) - set(norm_features))
-    rename = {'death': 'mortality'}
+    rename = {"death": "mortality"}
 
     mytable = TableOne(
-        df, columns=cat_cols + num_cols, categorical=cat_cols, nonnormal=nonnormal,
-        continuous=num_cols, groupby=config.center, missing=True, pval=True, smd=True,
+        df,
+        columns=cat_cols + num_cols,
+        categorical=cat_cols,
+        nonnormal=nonnormal,
+        continuous=num_cols,
+        groupby=config.center,
+        missing=True,
+        pval=True,
+        smd=True,
         # pval_adjust='bonferroni'
     )
     print(mytable.tabulate(tablefmt="fancy_grid"))
@@ -182,26 +198,31 @@ def run_mcar_test(df, output_dir):
         df_hos.drop(columns=config.center, inplace=True)
 
         for col in df_hos.columns:
-            print(f'col: {col}')
+            print(f"col: {col}")
             if df_hos[col].nunique() < 10:
                 # 对于对象类型，尝试转换为数值类型，否则用标签编码
                 try:
-                    df_hos[col] = df_hos[col].apply(lambda x: int(float(x)) if pd.notna(x) else x)
+                    df_hos[col] = df_hos[col].apply(
+                        lambda x: int(float(x)) if pd.notna(x) else x
+                    )
 
                     # df_test[col] = pd.to_numeric(df_test[col])
 
                 except ValueError:
                     # 使用标签编码
                     from sklearn.preprocessing import LabelEncoder
+
                     le = LabelEncoder()
                     mask = df_hos[col].notna()
                     df_hos.loc[mask, col] = le.fit_transform(df_hos.loc[mask, col])
-                    df_hos[col] = df_hos[col].apply(lambda x: int(x) if pd.notna(x) else x)
+                    df_hos[col] = df_hos[col].apply(
+                        lambda x: int(x) if pd.notna(x) else x
+                    )
 
-        print('mcar_test info: ', df_hos.info())
+        print("mcar_test info: ", df_hos.info())
         result = mcar_test(df_hos)
-        p = result.loc['p', 'MCAR Test Values']
-        print(f'mcar_test p: {p}')
+        p = result.loc["p", "MCAR Test Values"]
+        print(f"mcar_test p: {p}")
         if p > 0.05:
             mcar_dict[hos] = True
         else:
@@ -222,7 +243,6 @@ def evidently_wasserstein_psi(df, col, cat_cols, num_cols, output_dir):
         cat_cols.remove(config.center)
 
     if len(hos_cnt) >= 2:
-
         # 3. 选定该分组下样本最多的医院作为基线
         hos_cnt_max = hos_cnt.index[0]
         reference_data = df[df[col] == hos_cnt_max]
@@ -242,13 +262,25 @@ def evidently_wasserstein_psi(df, col, cat_cols, num_cols, output_dir):
             )
 
             # 构建 Evidently Dataset
-            eval_data_1 = Dataset.from_pandas(reference_data, data_definition=local_schema)
-            eval_data_2 = Dataset.from_pandas(current_data, data_definition=local_schema)
+            eval_data_1 = Dataset.from_pandas(
+                reference_data, data_definition=local_schema
+            )
+            eval_data_2 = Dataset.from_pandas(
+                current_data, data_definition=local_schema
+            )
 
             # 运行报告
 
-            report = Report(metrics=[
-                DataDriftPreset(cat_method="psi", num_method="wasserstein", cat_threshold=0.2, num_threshold=0.1)])
+            report = Report(
+                metrics=[
+                    DataDriftPreset(
+                        cat_method="psi",
+                        num_method="wasserstein",
+                        cat_threshold=0.2,
+                        num_threshold=0.1,
+                    )
+                ]
+            )
 
             my_eval = report.run(reference_data=eval_data_1, current_data=eval_data_2)
             # print(my_eval.json())

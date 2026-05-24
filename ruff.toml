@@ -1,5 +1,5 @@
 # 目标 Python 版本
-target-version = "py310"
+target-version = "py312"
 line-length = 88
 
 [lint]
@@ -8,7 +8,7 @@ line-length = 88
 select = ["E", "W", "F", "I", "N", "UP", "B", "ARG"]
 
 # 忽略特定规则
-ignore = []
+ignore = ["E501"]  # 行长检查交给 Formatter 处理
 
 [lint.isort]
 # 自动合并相同模块的导入

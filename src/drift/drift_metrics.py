@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import wasserstein_distance, chi2_contingency
+from scipy.stats import chi2_contingency, wasserstein_distance
 
 """
 包含：
@@ -16,6 +16,7 @@ Cramer's V
 # SMD (Standardized Mean Difference)
 ############################################
 
+
 def compute_smd(x_ref, x_cur):
 
     x_ref = x_ref.dropna()
@@ -30,9 +31,7 @@ def compute_smd(x_ref, x_cur):
     sd1 = np.std(x_ref, ddof=1)
     sd2 = np.std(x_cur, ddof=1)
 
-    pooled_sd = np.sqrt(
-        (sd1**2 + sd2**2) / 2
-    )
+    pooled_sd = np.sqrt((sd1**2 + sd2**2) / 2)
 
     if pooled_sd == 0:
         return 0
@@ -43,6 +42,7 @@ def compute_smd(x_ref, x_cur):
 ############################################
 # Wasserstein
 ############################################
+
 
 def compute_wasserstein(x_ref, x_cur):
 
@@ -59,30 +59,24 @@ def compute_wasserstein(x_ref, x_cur):
 # PSI
 ############################################
 
+
 def compute_psi(ref, cur):
 
     ref = ref.fillna("MISSING")
     cur = cur.fillna("MISSING")
 
-    categories = list(
-        set(ref.unique()) |
-        set(cur.unique())
-    )
+    categories = list(set(ref.unique()) | set(cur.unique()))
 
     psi = 0
 
     for cat in categories:
-
         ref_pct = (ref == cat).mean()
         cur_pct = (cur == cat).mean()
 
         ref_pct = max(ref_pct, 1e-6)
         cur_pct = max(cur_pct, 1e-6)
 
-        psi += (
-            (cur_pct - ref_pct) *
-            np.log(cur_pct / ref_pct)
-        )
+        psi += (cur_pct - ref_pct) * np.log(cur_pct / ref_pct)
 
     return psi
 
@@ -90,6 +84,7 @@ def compute_psi(ref, cur):
 ############################################
 # Cramer's V
 ############################################
+
 
 def compute_cramers_v(x, center):
 
@@ -101,6 +96,4 @@ def compute_cramers_v(x, center):
 
     r, k = cm.shape
 
-    return np.sqrt(
-        chi2 / (n * (min(r - 1, k - 1)))
-    )
+    return np.sqrt(chi2 / (n * (min(r - 1, k - 1))))

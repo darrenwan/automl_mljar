@@ -1,19 +1,18 @@
 import json
 import os
-from typing import Tuple, List
 
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from src.config import config
-from src.missing.impute_mice import mice_impute, median_mode_impute
+from src.missing.impute_mice import median_mode_impute, mice_impute
 from src.missing.missing_analysis import evidently_wasserstein_psi
 from src.missing.visualization import feat_distribution
 
 # 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams["font.sans-serif"] = ["SimHei"]
 # 解决负号显示问题
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams["axes.unicode_minus"] = False
 
 
 class DataImputer:
@@ -21,7 +20,12 @@ class DataImputer:
     数据插补器类，用于处理缺失值插补任务
     """
 
-    def __init__(self, input_file: str, out_distri_dir="/distribution_analysis", output_file="imputed.xlsx"):
+    def __init__(
+        self,
+        input_file: str,
+        out_distri_dir="/distribution_analysis",
+        output_file="imputed.xlsx",
+    ):
         self.input_file = input_file
         self.output_dir = config.DATA_FINAL_DIR
         self.out_distri_dir = config.DATA_MID_DIR + out_distri_dir
@@ -35,12 +39,21 @@ class DataImputer:
         os.makedirs(self.out_distri_dir, exist_ok=True)
 
         # 初始化数据
-        self.cat_cols, self.cat_str_cols, self.num_cols, self.df = self._load_and_classify_data()
+        self.cat_cols, self.cat_str_cols, self.num_cols, self.df = (
+            self._load_and_classify_data()
+        )
 
         # 分析缺失值
-        self.miss_small_cat, self.miss_small_num, self.miss_big_cat, self.miss_big_num = self._analyze_missing_values()
+        (
+            self.miss_small_cat,
+            self.miss_small_num,
+            self.miss_big_cat,
+            self.miss_big_num,
+        ) = self._analyze_missing_values()
 
-    def _load_and_classify_data(self) -> Tuple[List[str], List[str], List[str], pd.DataFrame]:
+    def _load_and_classify_data(
+        self,
+    ) -> tuple[list[str], list[str], list[str], pd.DataFrame]:
         """
         加载数据并按类型分类列
         """
@@ -55,33 +68,44 @@ class DataImputer:
                 continue
             if df[col].nunique() < 10:
                 cat_cols.append(col)
-                if df[col].dtype == 'object':
+                if df[col].dtype == "object":
                     cat_str_cols.append(col)
             else:
                 num_cols.append(col)
 
         return cat_cols, cat_str_cols, num_cols, df
 
-    def _analyze_missing_values(self) -> Tuple[List[str], List[str], List[str], List[str], List[str]]:
+    def _analyze_missing_values(
+        self,
+    ) -> tuple[list[str], list[str], list[str], list[str], list[str]]:
         """
         分析缺失值分布
         """
         # Center × label
-        cross = (
-            self.df.groupby([config.center, config.label])[self.cat_cols + self.num_cols]
-            .apply(lambda x: x.isna().mean())
-        )
+        cross = self.df.groupby([config.center, config.label])[
+            self.cat_cols + self.num_cols
+        ].apply(lambda x: x.isna().mean())
         print(cross.index)
 
         miss_big = [col for col in cross.columns if cross[col].max() > 0.05]
-        miss_small = [col for col in cross.columns if cross[col].max() <= 0.05 and cross[col].max() > 0.0]
+        miss_small = [
+            col
+            for col in cross.columns
+            if cross[col].max() <= 0.05 and cross[col].max() > 0.0
+        ]
         miss_small_cat = [col for col in miss_small if col in self.cat_cols]
         miss_small_num = [col for col in miss_small if col in self.num_cols]
         miss_big_cat = [col for col in miss_big if col in self.cat_cols]
         miss_big_num = [col for col in miss_big if col in self.num_cols]
-        cols_dict = {'miss_small_cat': miss_small_cat, 'miss_small_num': miss_small_num, 'miss_big_cat': miss_big_cat,
-                     'miss_big_num': miss_big_num}
-        with open(self.out_distri_dir + '/' + "missing_cols.json", 'w', encoding='utf-8') as f:
+        cols_dict = {
+            "miss_small_cat": miss_small_cat,
+            "miss_small_num": miss_small_num,
+            "miss_big_cat": miss_big_cat,
+            "miss_big_num": miss_big_num,
+        }
+        with open(
+            self.out_distri_dir + "/" + "missing_cols.json", "w", encoding="utf-8"
+        ) as f:
             json.dump(cols_dict, f, ensure_ascii=False, indent=4)
 
         return miss_small_cat, miss_small_num, miss_big_cat, miss_big_num
@@ -114,7 +138,7 @@ class DataImputer:
                     num_cols=self.num_cols,
                     id_cols=self.id_cols,
                     model_miss_encoder_dir=self.model_miss_encoder_dir,
-                    model_mice_dir=self.model_mice_dir
+                    model_mice_dir=self.model_mice_dir,
                 )
                 mice_imputed.append(data_imputed)
             else:
@@ -132,7 +156,7 @@ class DataImputer:
         cnt = self.df[self.miss_big_cat[0]].value_counts(dropna=False)
         print(f"插补后{self.miss_big_cat[0]}缺失情况：", cnt)
 
-    def visualize_results(self, suffix='clean'):
+    def visualize_results(self, suffix="clean"):
         """
         可视化插补结果
         """
@@ -142,7 +166,7 @@ class DataImputer:
         """
         运行完整的插补流程
         """
-        self.visualize_results(suffix='clean')
+        self.visualize_results(suffix="clean")
 
         print("开始处理小规模缺失值...")
         self.process_small_missing_values()
@@ -154,31 +178,38 @@ class DataImputer:
         self.save_results()
 
         print("生成可视化结果...")
-        self.visualize_results(suffix='imputed')
+        self.visualize_results(suffix="imputed")
 
         print("插补完成！")
 
 
-def impute_compare(impute_before_file, impute_after_file, miss_json_file, out_distri_dir):
-    with open(miss_json_file, 'r', encoding='utf-8') as f:
+def impute_compare(
+    impute_before_file, impute_after_file, miss_json_file, out_distri_dir
+):
+    with open(miss_json_file, encoding="utf-8") as f:
         cols_dict = json.load(f)
-    miss_small_cat = cols_dict['miss_small_cat']
-    miss_small_num = cols_dict['miss_small_num']
-    miss_big_cat = cols_dict['miss_big_cat']
-    miss_big_num = cols_dict['miss_big_num']
+    miss_small_cat = cols_dict["miss_small_cat"]
+    miss_small_num = cols_dict["miss_small_num"]
+    miss_big_cat = cols_dict["miss_big_cat"]
+    miss_big_num = cols_dict["miss_big_num"]
     cols = [config.pid] + miss_small_cat + miss_big_cat + miss_small_num + miss_big_num
 
     impute_before = pd.read_excel(impute_before_file)
     impute_before = impute_before[cols]
-    impute_before['impute'] = 'beforeImpute'
+    impute_before["impute"] = "beforeImpute"
 
     impute_after = pd.read_excel(impute_after_file)
     impute_after = impute_after[cols]
-    impute_after['impute'] = 'afterImpute'
+    impute_after["impute"] = "afterImpute"
 
     df_cmp = pd.concat([impute_before, impute_after], ignore_index=True)
-    evidently_wasserstein_psi(df_cmp, col='impute', cat_cols=miss_small_cat + miss_big_cat,
-                              num_cols=miss_small_num + miss_big_num, output_dir=out_distri_dir)
+    evidently_wasserstein_psi(
+        df_cmp,
+        col="impute",
+        cat_cols=miss_small_cat + miss_big_cat,
+        num_cols=miss_small_num + miss_big_num,
+        output_dir=out_distri_dir,
+    )
 
 
 def main():
@@ -187,11 +218,16 @@ def main():
     """
 
     mid_input_file = config.DATA_WIDE_FILE.replace(".xlsx", "_clean.xlsx")
-    suffix = '控江医院'
-    mid_input_file = mid_input_file.replace(".xlsx", f"_clean_{suffix}_pid_dropped.xlsx")
+    suffix = "控江医院"
+    mid_input_file = mid_input_file.replace(
+        ".xlsx", f"_clean_{suffix}_pid_dropped.xlsx"
+    )
 
-    imputer = DataImputer(mid_input_file, out_distri_dir=f"/distribution_analysis_{suffix}",
-                          output_file=f"imputed_{suffix}.xlsx")
+    imputer = DataImputer(
+        mid_input_file,
+        out_distri_dir=f"/distribution_analysis_{suffix}",
+        output_file=f"imputed_{suffix}.xlsx",
+    )
     imputer.run()
 
     impute_before_file = mid_input_file
@@ -199,7 +235,9 @@ def main():
     out_distri_dir = config.DATA_MID_DIR + f"/distribution_analysis_{suffix}"
     miss_json_file = out_distri_dir + "/missing_cols.json"
 
-    impute_compare(impute_before_file, impute_after_file, miss_json_file, out_distri_dir)
+    impute_compare(
+        impute_before_file, impute_after_file, miss_json_file, out_distri_dir
+    )
 
 
 if __name__ == "__main__":

@@ -1,28 +1,17 @@
 # visualization.py
-import pandas as pd
+import matplotlib.pyplot as plt
+import missingno as msno
+import seaborn as sns
 import umap
 
 from ..config import config
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-import missingno as msno
-
 
 def sns_multicenter_missing_top(
-        df, out_dir,
-        center_col="CENTER",
-        top_n=30,
-        min_missing=0.05,
-        suffix='raw'
+    df, out_dir, center_col="CENTER", top_n=30, min_missing=0.05, suffix="raw"
 ):
     # 1️⃣ missing rate
-    missing_df = (
-        df
-        .groupby(center_col)
-        .apply(lambda x: x.isna().mean())
-        .T
-    )
+    missing_df = df.groupby(center_col).apply(lambda x: x.isna().mean()).T
 
     # 2️⃣ 计算跨中心差异（max - min）
     missing_df["diff"] = missing_df.max(axis=1) - missing_df.min(axis=1)
@@ -45,48 +34,42 @@ def sns_multicenter_missing_top(
         annot=True,  # 显示数值
         fmt=".2f",  # 保留一位小数
         cmap="YlOrRd",  # 颜色越红代表缺失率越高
-        cbar_kws={'label': 'Missing Rate (%)'}
+        cbar_kws={"label": "Missing Rate (%)"},
     )
-    plt.title(f"Top {top_n} Center-wise Missing Differences ({suffix})", pad=15, fontdict={'fontsize': 16})
+    plt.title(
+        f"Top {top_n} Center-wise Missing Differences ({suffix})",
+        pad=15,
+        fontdict={"fontsize": 16},
+    )
     plt.xticks(rotation=45)
 
     plt.xlabel(center_col)
     plt.ylabel("Features")
 
     plt.tight_layout()
-    plt.savefig(
-        f"{out_dir}/sns_multicenter_missing_top_{suffix}.svg", dpi=300
-    )
+    plt.savefig(f"{out_dir}/sns_multicenter_missing_top_{suffix}.svg", dpi=300)
     plt.show()
 
 
-def sns_multicenter_missing_cluster(df, out_dir, center_col, suffix='raw'):
-    missing_rates = (
-        df.groupby(center_col)
-        .apply(lambda x: x.isna().mean())
-        .T
-    )
+def sns_multicenter_missing_cluster(df, out_dir, center_col, suffix="raw"):
+    missing_rates = df.groupby(center_col).apply(lambda x: x.isna().mean()).T
     cols_ncount = missing_rates.shape[1]
     rows_count = missing_rates.shape[0]
     plt.figure(figsize=(12, 10))
-    sns.clustermap(
-        missing_rates,
-        cmap="YlOrRd",
-        annot=False
-    )
+    sns.clustermap(missing_rates, cmap="YlOrRd", annot=False)
 
     plt.suptitle(f"Clustered Missing Pattern Across {center_col}")
 
     plt.tight_layout()
-    plt.savefig(
-        f"{out_dir}/sns_multicenter_missing_cluster_{suffix}.svg", dpi=300
-    )
+    plt.savefig(f"{out_dir}/sns_multicenter_missing_cluster_{suffix}.svg", dpi=300)
     plt.show()
 
 
-def sns_feat_miss_overview(df, out_dir, suffix='raw'):
+def sns_feat_miss_overview(df, out_dir, suffix="raw"):
     # 计算每个医院每个特征的缺失率
-    missing_rates = df.set_index(config.center).isna().groupby(config.center).mean() * 100
+    missing_rates = (
+        df.set_index(config.center).isna().groupby(config.center).mean() * 100
+    )
     cols_ncount = missing_rates.shape[1]
     rows_count = missing_rates.shape[0]
     plt.figure(figsize=(cols_ncount * 0.8, rows_count * 2))
@@ -96,18 +79,20 @@ def sns_feat_miss_overview(df, out_dir, suffix='raw'):
         annot=True,  # 显示数值
         fmt=".2f",  # 保留一位小数
         cmap="YlOrRd",  # 颜色越红代表缺失率越高
-        cbar_kws={'label': 'Missing Rate (%)'}
+        cbar_kws={"label": "Missing Rate (%)"},
     )
-    plt.title(f'Missing Data Heatmap by {config.center} ({suffix})', pad=15, fontdict={'fontsize': 16})
+    plt.title(
+        f"Missing Data Heatmap by {config.center} ({suffix})",
+        pad=15,
+        fontdict={"fontsize": 16},
+    )
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig(
-        f"{out_dir}/sns_feat_miss_overview_{suffix}.svg", dpi=300
-    )
+    plt.savefig(f"{out_dir}/sns_feat_miss_overview_{suffix}.svg", dpi=300)
     plt.show()
 
 
-def sns_feat_miss_overview_row_cols(df, out_dir, suffix='raw'):
+def sns_feat_miss_overview_row_cols(df, out_dir, suffix="raw"):
     # ==========================================
     # 2. 计算特征列和样本行的缺失率
     # ==========================================
@@ -129,17 +114,22 @@ def sns_feat_miss_overview_row_cols(df, out_dir, suffix='raw'):
         x=col_missing_rate.values,
         y=col_missing_rate.index,
         ax=axes[0],
-        palette="flare"  # 使用渐变色系
+        palette="flare",  # 使用渐变色系
     )
-    axes[0].set_title(f'Missing Rate by Features (Columns) ({suffix})', fontsize=14, fontweight='bold', pad=10)
-    axes[0].set_xlabel('Missing Rate (%)', fontsize=12)
-    axes[0].set_ylabel('Features', fontsize=12)
+    axes[0].set_title(
+        f"Missing Rate by Features (Columns) ({suffix})",
+        fontsize=14,
+        fontweight="bold",
+        pad=10,
+    )
+    axes[0].set_xlabel("Missing Rate (%)", fontsize=12)
+    axes[0].set_ylabel("Features", fontsize=12)
     # 修改点：延长一点 X 轴的范围，防止右侧的百分比标签被切掉
     axes[0].set_xlim(0, col_missing_rate.max() * 1.15)
 
     # 在柱子上添加具体数值标签
     for container in ax1.containers:
-        ax1.bar_label(container, fmt='%.1f%%', padding=3, fontsize=10)
+        ax1.bar_label(container, fmt="%.1f%%", padding=3, fontsize=10)
 
     # ---------- 图2：样本行缺失率分布 (直方图) ----------
     sns.histplot(
@@ -147,18 +137,20 @@ def sns_feat_miss_overview_row_cols(df, out_dir, suffix='raw'):
         bins=15,  # 分成15个区间
         kde=True,  # 显示核密度估计曲线
         color="teal",
-        ax=axes[1]
+        ax=axes[1],
     )
-    axes[1].set_title(f'Distribution of Missing Rates Across Samples (Rows) ({suffix})', fontsize=14, fontweight='bold',
-                      pad=10)
-    axes[1].set_ylabel('Number of Samples', fontsize=12)
-    axes[1].set_xlabel('Missing Rate per Sample (%)', fontsize=12)
+    axes[1].set_title(
+        f"Distribution of Missing Rates Across Samples (Rows) ({suffix})",
+        fontsize=14,
+        fontweight="bold",
+        pad=10,
+    )
+    axes[1].set_ylabel("Number of Samples", fontsize=12)
+    axes[1].set_xlabel("Missing Rate per Sample (%)", fontsize=12)
 
     # 调整整体布局，防止标签被截断
     plt.tight_layout()
-    plt.savefig(
-        f"{out_dir}/sns_feat_miss_overview_row_cols_{suffix}.svg", dpi=300
-    )
+    plt.savefig(f"{out_dir}/sns_feat_miss_overview_row_cols_{suffix}.svg", dpi=300)
     plt.show()
 
 
@@ -185,10 +177,7 @@ def plot_missing_patterns_msno(df, center_dep_vars, non_center_dep_vars, output_
             )
 
         plt.tight_layout()
-        plt.savefig(
-            f"{output_dir}/msno_{fig_type}.svg",
-            dpi=300
-        )
+        plt.savefig(f"{output_dir}/msno_{fig_type}.svg", dpi=300)
 
         plt.show()
 
@@ -197,20 +186,14 @@ def plot_missing_patterns_msno(df, center_dep_vars, non_center_dep_vars, output_
 
         n_center = len(centers)
 
-        fig, axes = plt.subplots(
-            nrows=1,
-            ncols=n_center,
-            figsize=(6 * n_center, 8)
-        )
+        fig, axes = plt.subplots(nrows=1, ncols=n_center, figsize=(6 * n_center, 8))
 
         # 如果只有1个center
         if n_center == 1:
             axes = [axes]
 
         for i, center in enumerate(centers):
-            df_center = df[
-                df[CENTER_COL] == center
-                ].drop(columns=[CENTER_COL])
+            df_center = df[df[CENTER_COL] == center].drop(columns=[CENTER_COL])
 
             if fig_type == "matrix":
                 msno.matrix(
@@ -232,16 +215,10 @@ def plot_missing_patterns_msno(df, center_dep_vars, non_center_dep_vars, output_
                     fontsize=fontsize,
                 )
 
-            axes[i].set_title(
-                f"Center {center}\n"
-                f"N={len(df_center)}"
-            )
+            axes[i].set_title(f"Center {center}\nN={len(df_center)}")
 
         plt.tight_layout()
-        plt.savefig(
-            f"{output_dir}/msno_by_center_{fig_type}.svg",
-            dpi=300
-        )
+        plt.savefig(f"{output_dir}/msno_by_center_{fig_type}.svg", dpi=300)
 
         plt.show()
 
@@ -260,11 +237,7 @@ def plot_missing_patterns_msno(df, center_dep_vars, non_center_dep_vars, output_
 
 
 def plot_missing_corr(df, features, out_dir):
-    missing_matrix = (
-        df[features]
-        .isna()
-        .astype(int)
-    )
+    missing_matrix = df[features].isna().astype(int)
 
     corr = missing_matrix.corr()
 
@@ -273,23 +246,15 @@ def plot_missing_corr(df, features, out_dir):
     plt.title("Missing Correlation")
     plt.tight_layout()
 
-    plt.savefig(
-        f"{out_dir}/missing_corr.png"
-    )
+    plt.savefig(f"{out_dir}/missing_corr.png")
 
 
 def plot_missing_umap(df, features, output_dir):
-    missing_matrix = (
-        df[features]
-        .isna()
-        .astype(int)
-    )
+    missing_matrix = df[features].isna().astype(int)
 
-    embedding = umap.UMAP(
-        n_neighbors=30,
-        min_dist=0.1,
-        random_state=42
-    ).fit_transform(missing_matrix)
+    embedding = umap.UMAP(n_neighbors=30, min_dist=0.1, random_state=42).fit_transform(
+        missing_matrix
+    )
 
     # 将类别变量转换为数值编码用于颜色映射
     categories = df[config.center]
@@ -301,8 +266,8 @@ def plot_missing_umap(df, features, output_dir):
         embedding[:, 0],
         embedding[:, 1],
         c=color_vals,
-        cmap='tab10',  # 使用适合分类的颜色映射
-        alpha=0.7
+        cmap="tab10",  # 使用适合分类的颜色映射
+        alpha=0.7,
     )
 
     # 添加颜色条并设置标签
@@ -310,9 +275,7 @@ def plot_missing_umap(df, features, output_dir):
     plt.title("Missingness UMAP")
     plt.tight_layout()
 
-    plt.savefig(
-        f"{output_dir}/missing_umap.svg", dpi=300
-    )
+    plt.savefig(f"{output_dir}/missing_umap.svg", dpi=300)
 
 
 def feat_distribution(df, output_dir, suffix="raw"):
@@ -323,23 +286,21 @@ def feat_distribution(df, output_dir, suffix="raw"):
 
     # 转换数据格式
     data_long = data.melt(
-        id_vars=[config.center],
-        var_name='feature',
-        value_name='value'
+        id_vars=[config.center], var_name="feature", value_name="value"
     )
 
     # 总体分布直方图
     g = sns.FacetGrid(
         data_long,
-        col='feature',
+        col="feature",
         # hue=config.center,
         col_wrap=5,
         sharex=False,  # FacetGrid 直接支持 sharex
         sharey=False,
         height=4,
-        aspect=1.2
+        aspect=1.2,
     )
-    g.map(sns.histplot, 'value', stat='count')
+    g.map(sns.histplot, "value", stat="count")
     g.add_legend()
     plt.tight_layout()
     plt.savefig(f"{output_dir}/feat_distribution_{suffix}.svg", dpi=300)
@@ -348,15 +309,15 @@ def feat_distribution(df, output_dir, suffix="raw"):
     # 基于多中心的分布直方图
     g = sns.FacetGrid(
         data_long,
-        col='feature',
+        col="feature",
         hue=config.center,
         col_wrap=5,
         sharex=False,  # FacetGrid 直接支持 sharex
         sharey=False,
         height=4,
-        aspect=1.2
+        aspect=1.2,
     )
-    g.map(sns.histplot, 'value', stat='count')
+    g.map(sns.histplot, "value", stat="count")
     g.add_legend()
     plt.tight_layout()
     plt.savefig(f"{output_dir}/feat_distribution_by_center_{suffix}.svg", dpi=300)

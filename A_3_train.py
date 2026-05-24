@@ -1,12 +1,14 @@
 import os
-import pickle
-from typing import Tuple, List
 
 import joblib
 import pandas as pd
 
 from src.config import config
-from src.model.feat_model import train_explain_custom, model_predict, model_predict_out2xlsx, feats_select
+from src.model.feat_model import (
+    model_predict,
+    model_predict_out2xlsx,
+    train_explain_custom,
+)
 
 
 def load_data(input_file: str, pos_label="pneumonia"):
@@ -15,17 +17,23 @@ def load_data(input_file: str, pos_label="pneumonia"):
     """
     model_encoder_dir = config.MODEL_ENCODER_DIR
     df = pd.read_excel(input_file)
-    df[config.label] = df[config.label].str.strip().map({"上感": "URTI", "肺炎": pos_label})
+    df[config.label] = (
+        df[config.label].str.strip().map({"上感": "URTI", "肺炎": pos_label})
+    )
 
     # # 找出object类型的列
-    object_cols = df.select_dtypes(include=['object']).columns.tolist()
-    object_cols = [col for col in object_cols if col not in [config.pid, config.center, config.label]]
+    object_cols = df.select_dtypes(include=["object"]).columns.tolist()
+    object_cols = [
+        col
+        for col in object_cols
+        if col not in [config.pid, config.center, config.label]
+    ]
 
     # 对每个object类型的列进行标签编码
     from sklearn.preprocessing import LabelEncoder
 
     for col in object_cols:
-        col_encoder_file = model_encoder_dir + f'/cat_encoder_{col}.joblib'
+        col_encoder_file = model_encoder_dir + f"/cat_encoder_{col}.joblib"
 
         if not os.path.exists(col_encoder_file):
             le = LabelEncoder()
@@ -39,35 +47,71 @@ def load_data(input_file: str, pos_label="pneumonia"):
     return df
 
 
-def run_main_t1p2(df: pd.DataFrame, mode="Perform", pos_label="pneumonia", sampling_strategy=0.5):
+def run_main_t1p2(
+    df: pd.DataFrame, mode="Perform", pos_label="pneumonia", sampling_strategy=0.5
+):
     hos_rate = df[center_col].value_counts()
     hos_train = hos_rate.index[0]
     df_train = df[df[center_col] == hos_train]
     df_train.drop(columns=[pid_col], inplace=True)
     out_dir = config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}_{sampling_strategy}"
 
-    train_explain_custom(df_train, target_col, center_col, mode, results_path=out_dir,
-                         suffix=hos_train, pos_label=pos_label, sampling_strategy=sampling_strategy)
-    model_predict_out2xlsx(df, target_col, other_cols=[center_col, pid_col], results_path=out_dir,
-                           suffix=f"predict_all_{mode}-{hos_train}train")
+    train_explain_custom(
+        df_train,
+        target_col,
+        center_col,
+        mode,
+        results_path=out_dir,
+        suffix=hos_train,
+        pos_label=pos_label,
+        sampling_strategy=sampling_strategy,
+    )
+    model_predict_out2xlsx(
+        df,
+        target_col,
+        other_cols=[center_col, pid_col],
+        results_path=out_dir,
+        suffix=f"predict_all_{mode}-{hos_train}train",
+    )
 
     for hos in hos_rate.index[1:]:
         df_hos = df[df[center_col] == hos]
-        model_predict(df_hos, target_col, other_cols=[center_col, pid_col],
-                      results_path=out_dir, suffix=hos, pos_label=pos_label)
+        model_predict(
+            df_hos,
+            target_col,
+            other_cols=[center_col, pid_col],
+            results_path=out_dir,
+            suffix=hos,
+            pos_label=pos_label,
+        )
 
 
-def run_main_t123(df: pd.DataFrame, mode="Perform", pos_label="pneumonia", sampling_strategy=0.5):
+def run_main_t123(
+    df: pd.DataFrame, mode="Perform", pos_label="pneumonia", sampling_strategy=0.5
+):
     hos_train = "3个医院"
     df_train = df.copy()
     df_train.drop(columns=[pid_col], inplace=True)
     out_dir = config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}_{sampling_strategy}"
 
-    train_explain_custom(df_train, target_col, center_col, mode, results_path=out_dir,
-                         suffix=hos_train, pos_label=pos_label, sampling_strategy=sampling_strategy)
+    train_explain_custom(
+        df_train,
+        target_col,
+        center_col,
+        mode,
+        results_path=out_dir,
+        suffix=hos_train,
+        pos_label=pos_label,
+        sampling_strategy=sampling_strategy,
+    )
 
-    model_predict_out2xlsx(df, target_col, other_cols=[center_col, pid_col], results_path=out_dir,
-                           suffix=f"predict_all_{mode}-{hos_train}train")
+    model_predict_out2xlsx(
+        df,
+        target_col,
+        other_cols=[center_col, pid_col],
+        results_path=out_dir,
+        suffix=f"predict_all_{mode}-{hos_train}train",
+    )
 
 
 def run_main_t12p3(df: pd.DataFrame, mode="Perform", pos_label="pneumonia"):
@@ -82,31 +126,53 @@ def run_main_t12p3(df: pd.DataFrame, mode="Perform", pos_label="pneumonia"):
     df_train = df[df[center_col].isin([hos_train_0, hos_train_1])]
     df_train.drop(columns=[pid_col], inplace=True)
 
-    train_explain_custom(df_train, target_col, center_col, mode,
-                         results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}",
-                         suffix=hos_train, pos_label=pos_label)
+    train_explain_custom(
+        df_train,
+        target_col,
+        center_col,
+        mode,
+        results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}",
+        suffix=hos_train,
+        pos_label=pos_label,
+    )
 
     df_hos = df[df[center_col] == hos_train_2]
-    model_predict(df_hos, target_col, other_cols=[center_col, pid_col],
-                  results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}", suffix=hos_train_2,
-                  pos_label=pos_label)
+    model_predict(
+        df_hos,
+        target_col,
+        other_cols=[center_col, pid_col],
+        results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}",
+        suffix=hos_train_2,
+        pos_label=pos_label,
+    )
 
     # 样本量排名第一、第三的用于训练
     hos_train = f"{hos_train_0}_{hos_train_2}"
     df_train = df[df[center_col].isin([hos_train_0, hos_train_2])]
     df_train.drop(columns=[pid_col], inplace=True)
 
-    train_explain_custom(df_train, target_col, center_col, mode,
-                         results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}",
-                         suffix=hos_train, pos_label=pos_label)
+    train_explain_custom(
+        df_train,
+        target_col,
+        center_col,
+        mode,
+        results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}",
+        suffix=hos_train,
+        pos_label=pos_label,
+    )
 
     df_hos = df[df[center_col] == hos_train_1]
-    model_predict(df_hos, target_col, other_cols=[center_col, pid_col],
-                  results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}", suffix=hos_train_1,
-                  pos_label=pos_label)
+    model_predict(
+        df_hos,
+        target_col,
+        other_cols=[center_col, pid_col],
+        results_path=config.DATA_FINAL_DIR + f"/results_{mode}-{hos_train}",
+        suffix=hos_train_1,
+        pos_label=pos_label,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # D:\anaconda\envs\py312_mljar\Lib\site-packages\supervised\utils\shap.py
 
     """
@@ -119,7 +185,7 @@ if __name__ == '__main__':
         # https://github.com/mljar/mljar-supervised/issues/114 disable for CatBoost
         if algorithm.algorithm_short_name in ["Baseline", "Neural Network", "CatBoost"]:
             return False
-    
+
     # PlotSHAP.compute() line200-219
     with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -144,7 +210,7 @@ if __name__ == '__main__':
 
     """
     modes = ["Explain", "Perform", "Compete", "Optuna"]
-    suffixes = ['控江医院', '3个医院']
+    suffixes = ["控江医院", "3个医院"]
     sampling_strategies = [0.2, 0.5, 1.0]
     for sampling_strategy in sampling_strategies[-1:]:
         for suffix in suffixes[:]:
@@ -156,9 +222,19 @@ if __name__ == '__main__':
             target_col = config.label
             pid_col = config.pid
             df = load_data(impute_after_file, pos_label)
-            if suffix == '控江医院':
-                run_main_t1p2(df, mode=mode, pos_label=pos_label, sampling_strategy=sampling_strategy)
+            if suffix == "控江医院":
+                run_main_t1p2(
+                    df,
+                    mode=mode,
+                    pos_label=pos_label,
+                    sampling_strategy=sampling_strategy,
+                )
             else:
-                run_main_t123(df, mode=mode, pos_label=pos_label, sampling_strategy=sampling_strategy)
+                run_main_t123(
+                    df,
+                    mode=mode,
+                    pos_label=pos_label,
+                    sampling_strategy=sampling_strategy,
+                )
 
         # run_main_t12p3(df, mode=mode, pos_label=pos_label)

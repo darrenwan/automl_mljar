@@ -1,8 +1,5 @@
 import pandas as pd
-import numpy as np
 from scipy.stats import chi2_contingency
-
-from src.config import config
 
 
 # ==========================================
@@ -49,20 +46,21 @@ def missing_chi2_test(df, target_col, features_to_test):
                 conclusion = "MCAR (与Target无显著相关)"
 
         # 统计每个Target类别下的缺失率 (为了方便写论文表格)
-        row_data = {'变量名称': feature}
-        row_data['卡方统计量'] = chi2
-        row_data['P-value'] = p_value
-        row_data['缺失机制结论'] = conclusion
+        row_data = {"变量名称": feature}
+        row_data["卡方统计量"] = chi2
+        row_data["P-value"] = p_value
+        row_data["缺失机制结论"] = conclusion
         results.append(row_data)
 
     # 转换为DataFrame并返回，方便展示
     results_df = pd.DataFrame(results)
     return results_df
 
+
 def multicenter_mcar_chi2_main(df, center_col, target_col, features, output_dir):
     centers = df[center_col].unique()
     for center in centers:
         df_center = df[df[center_col] == center]
         results_df = missing_chi2_test(df_center, target_col, features)
-        results_df['中心'] = center
+        results_df["中心"] = center
         results_df.to_excel(f"{output_dir}/mcar_chi2_test_{center}.xlsx", index=False)

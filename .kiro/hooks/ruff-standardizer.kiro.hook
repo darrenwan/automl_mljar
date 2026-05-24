@@ -1,6 +1,6 @@
 {
   "name": "Ruff Code Linting and Fixing",
-  "description": "保存 Python 文件时自动运行 Ruff 检查并修复可自动修复的错误",
+  "description": "保存 Python 文件时自动运行 Ruff 格式化",
   "version": "1",
   "when": {
     "type": "fileEdited",
@@ -10,6 +10,6 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "ruff check --fix ${file} && ruff format ${file}"
+    "command": "CALL conda.bat activate && conda activate py312_mljar && ruff format ."
   }
 }
