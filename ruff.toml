@@ -1,0 +1,15 @@
+# 目标 Python 版本
+target-version = "py310"
+line-length = 88
+
+[lint]
+# 选择要启用的规则集
+# E/W: PEP8 风格错误与警告, F: Pyflakes 语法错误, I: isort 导入排序, N: 命名规范
+select = ["E", "W", "F", "I", "N", "UP", "B", "ARG"]
+
+# 忽略特定规则
+ignore = []
+
+[lint.isort]
+# 自动合并相同模块的导入
+combine-as-imports = true

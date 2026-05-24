@@ -1,0 +1,28 @@
+{
+    "python.defaultInterpreterPath": "D:\\anaconda\\envs\\py312_mljar\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+
+    "terminal.integrated.defaultProfile.windows": "Conda (py312_mljar)",
+    "terminal.integrated.profiles.windows": {
+        "Conda (py312_mljar)": {
+            "path": "C:\\Windows\\System32\\cmd.exe",
+            "args": [
+                "/K",
+                "D:\\anaconda\\Scripts\\activate.bat py312_mljar"
+            ],
+            "icon": "snake"
+        },
+        "PowerShell (conda)": {
+            "source": "PowerShell",
+            "args": [
+                "-NoExit",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "$env:PYTHONIOENCODING='utf-8'; $env:PYTHONUTF8='1'; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; & 'D:\\anaconda\\shell\\condabin\\conda-hook.ps1' ; conda activate py312_mljar"
+            ],
+            "icon": "snake"
+        }
+    }
+}

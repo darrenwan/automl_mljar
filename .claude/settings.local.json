@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(F:\\\\客户\\\\姜磊\\\\kongjiang_hos\\\\.venv\\\\Scripts\\\\python.exe:*)",
+      "Bash(cmd:*)"
+    ]
+  }
+}
